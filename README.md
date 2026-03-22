@@ -3,7 +3,7 @@
   <p><b>A reinforcement learning project exploring PID controller tuning and headless Gazebo simulation scaling.</b></p>
 </div>
 
-## 📖 Project Overview
+##  Project Overview
 This project explores the integration of **Reinforcement Learning (RL)** with a physical drone simulation using **ROS 2 Humble** and **Gazebo**. 
 
 The main objective is to train an RL agent to tune PID controllers for a simulated drone. During the development process, an initial single-core approach was found to be heavily bottlenecked by Gazebo's physics rendering (running at ~1 FPS). To solve this, a parallelized, headless cluster was implemented using `ROS_DOMAIN_ID` and Stable Baselines 3's `SubprocVecEnv`, which successfully accelerated training by 14x. **A similar parallelized approach can be used to train any physical system—like bipedal robots, self-driving cars, or robotic arms—using Reinforcement Learning.**
