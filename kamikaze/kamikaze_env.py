@@ -1,0 +1,99 @@
+import gymnasium as gym
+import numpy as np
+from gymnasium import spaces
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+from std_srvs.srv import Empty as EmptySrv
+from std_msgs.msg import Empty as EmptyMsg
+import time
+import threading
+import os
+import subprocess
+
+class MultiDronePIDEnv(gym.Env):
+    def __init__(self, domain_id=0):
+        super(MultiDronePIDEnv, self).__init__()
+        
+        os.environ['ROS_DOMAIN_ID'] = str(domain_id)
+        
+        self.action_space = spaces.Box(low=0.0, high=20.0, shape=(3,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32)
+        
+        if not rclpy.ok():
+            rclpy.init()
+            
+        self.node = rclpy.create_node(f'drone_env_node_{domain_id}')
+        
+        self.spin_thread = threading.Thread(target=self.ros_spin, daemon=True)
+        self.spin_thread.start()
+        
+        self.reset_client = self.node.create_client(EmptySrv, '/reset_world')
+        self.vel_pub = self.node.create_publisher(Twist, '/simple_drone/cmd_vel', 10)
+        self.takeoff_pub = self.node.create_publisher(EmptyMsg, '/simple_drone/takeoff', 10)
+        self.odom_sub = self.node.create_subscription(Odometry, '/simple_drone/odom', self._odom_callback, 10)
+        
+        self.current_z = 0.0
+        self.current_vz = 0.0
+        self.target_z = 1.0
+        self.domain_id = domain_id
+
+    def ros_spin(self):
+        rclpy.spin(self.node)
+
+    def _odom_callback(self, msg):
+        self.current_z = msg.pose.pose.position.z
+        self.current_vz = msg.twist.twist.linear.z
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        
+        if self.reset_client.wait_for_service(timeout_sec=2.0):
+            self.reset_client.call_async(EmptySrv.Request())
+            
+        time.sleep(0.5) 
+        self.takeoff_pub.publish(EmptyMsg()) 
+        
+        msg = Twist()
+        msg.linear.z = 5.0 
+        for _ in range(10):
+            self.vel_pub.publish(msg)
+            time.sleep(0.05)
+            
+        timeout = time.time() + 2.0
+        while self.current_z < 0.2 and time.time() < timeout:
+            time.sleep(0.1)
+        
+        return np.array([self.target_z - self.current_z, self.current_vz], dtype=np.float32), {}
+
+    def step(self, action):
+        kp, ki, kd = action
+        
+        time_to_target = 50 
+        reached = False
+        
+        for i in range(50):
+            error = self.target_z - self.current_z
+            thrust = kp * error - kd * self.current_vz 
+            
+            msg = Twist()
+            msg.linear.z = float(thrust)
+            self.vel_pub.publish(msg)
+            time.sleep(0.01)
+            
+            # KAMIKAZE LOGIC: Did we hit the target zone?
+            if abs(error) < 0.2 and not reached:
+                time_to_target = i
+                reached = True
+                
+        # KAMIKAZE REWARD
+        if reached:
+            reward = 100.0 - time_to_target   # Hitting it quickly yields huge bonus
+            terminated = True # Episode SUCCESS: Target struck!
+        else:
+            reward = -50.0 # Heavy penalty
+            terminated = self.current_z < 0.1 or self.current_z > 5.0 # Crashed or flew away
+            
+        obs = np.array([self.target_z - self.current_z, self.current_vz], dtype=np.float32)
+        return obs, reward, terminated, False, {}
