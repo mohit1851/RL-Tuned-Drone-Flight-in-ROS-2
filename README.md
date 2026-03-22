@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🚁 RL-Tuned Drone Flight in ROS 2</h1>
+  <h1> RL-Tuned Drone Flight in ROS 2</h1>
   <p><b>A reinforcement learning project exploring PID controller tuning and headless Gazebo simulation scaling.</b></p>
 </div>
 
@@ -8,14 +8,14 @@ This project explores the integration of **Reinforcement Learning (RL)** with a 
 
 The main objective is to train an RL agent to tune PID controllers for a simulated drone. During the development process, an initial single-core approach was found to be heavily bottlenecked by Gazebo's physics rendering (running at ~1 FPS). To solve this, a parallelized, headless cluster was implemented using `ROS_DOMAIN_ID` and Stable Baselines 3's `SubprocVecEnv`, which successfully accelerated training by 14x. **A similar parallelized approach can be used to train any physical system—like bipedal robots, self-driving cars, or robotic arms—using Reinforcement Learning.**
 
-### 🌟 Technical Implementations
+###  Technical Implementations
 - **Gymnasium ROS 2 Wrapper:** A custom Python environment created to bridge ROS 2 `/cmd_vel` and `/odom` topics into OpenAI Gym-compliant multidimensional spaces.
 - **DDS Network Isolation:** Utilized dynamic `ROS_DOMAIN_ID` variables to launch completely independent physics simulations, preventing ROS topic cross-contamination across multiple agents.
 - **Headless Physics Acceleration:** Bypassed hardcoded C++ GUI interfaces (RViz & Gazebo Client) to dedicate 100% of CPU strictly to simulation math, accelerating training and stabilizing the server under heavy parallel loads.
 
 ---
 
-## 🏎️ Results: Performance Scaling
+##  Results: Performance Scaling
 Training robots in Gazebo is inherently slow due to graphics rendering limitations. By scaling the standard 1-core simulation to an **8-core parallel cluster**, significant performance improvements were recorded:
 
 - **Baseline (1 Core):** ~1 FPS (10,000 steps took ~1.5 Hours).
@@ -23,7 +23,7 @@ Training robots in Gazebo is inherently slow due to graphics rendering limitatio
 
 ---
 
-## 📂 Project Architecture
+##  Project Architecture
 The project is divided into three different training scenarios to demonstrate how reward function variations affect flight behavior:
 
 ### 1. `/single_drone` (The Baseline)
@@ -37,7 +37,7 @@ A scenario designed to test extreme behavior manipulation. The drone ignores sta
 
 ---
 
-## 🛠️ Installation & Prerequisites
+##  Installation & Prerequisites
 
 **1. System Requirements:**
 - Ubuntu 22.04 LTS
@@ -62,7 +62,7 @@ source install/setup.bash
 
 ---
 
-## 🚀 Usage Instructions
+##  Usage Instructions
 
 *Note: The Python scripts automatically spawn the required headless physics engines in the background. Running `ros2 launch` manually is not required/recommended for the multi-drone scripts.*
 
@@ -72,7 +72,7 @@ cd kamikaze
 python3 kamikaze_train.py
 ```
 
-**⚠️ Important Cleanup:**
+** Important Cleanup:**
 Because the script launches invisible, headless Gazebo servers, failing to close them may crash subsequent runs due to memory/port overloads. It is heavily recommended to clear the background processes between training sessions:
 ```bash
 killall -9 gzserver gzclient rviz2
